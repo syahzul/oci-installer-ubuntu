@@ -262,12 +262,11 @@ fi
 # Step 7: Download OCI8 tarball from PECL
 echo "[7/8] Downloading OCI8 tarball from PECL..."
 cd /tmp
-
 OCI8_VERSION="3.4.1"
 if [ ! -f oci8-${OCI8_VERSION}.tgz ]; then
     wget https://pecl.php.net/get/oci8-${OCI8_VERSION}.tgz
 else
-    echo "Extension file already downloaded, skipping..."
+    echo "OCI8 tarball already downloaded, skipping..."
 fi
 
 # Extract tarball
