@@ -11,7 +11,7 @@ This installer script is based on the tutorial from: https://gist.github.com/sya
 Run the installer script with sudo:
 
 ```bash
-wget -O oci-installer-ubuntu.sh "https://raw.githubusercontent.com/syahzul/oci-installer-ubuntu/refs/heads/main/install.sh"; bash oci-installer-ubuntu.sh
+wget -O oci8-installer.sh "https://raw.githubusercontent.com/syahzul/oci-installer-ubuntu/refs/heads/main/install.sh"; bash oci8-installer.sh
 ```
 
 The script will:
