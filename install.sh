@@ -275,7 +275,7 @@ if [ -d oci8-${OCI8_VERSION} ]; then
     rm -rf oci8-${OCI8_VERSION}
 fi
 tar -xzf oci8-${OCI8_VERSION}.tgz
-cd oci8
+cd oci8-${OCI8_VERSION}
 
 # Step 8: Compile and install OCI8 for selected PHP version
 echo "[8/8] Compiling and installing OCI8 extension for PHP ${PHP_VERSION}..."
