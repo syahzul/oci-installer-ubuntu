@@ -28,6 +28,75 @@ check_php_version() {
     fi
 }
 
+# Function to check if Oracle Instant Client is properly extracted
+check_oracle_extraction() {
+    # Check if directory exists
+    if [ ! -d /opt/oracle/instantclient_23_26 ]; then
+        return 1
+    fi
+    
+    # Check if SDK header directory exists
+    if [ ! -d /opt/oracle/instantclient_23_26/sdk ]; then
+        return 1
+    fi
+    
+    # Check if essential files exist
+    if [ ! -f /opt/oracle/instantclient_23_26/libclntsh.so ]; then
+        return 1
+    fi
+    
+    # Check if SDK header files exist
+    if [ ! -f /opt/oracle/instantclient_23_26/sdk/include/oci.h ]; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to check if Oracle Instant Client is already set up
+check_oracle_setup() {
+    local all_ok=true
+    
+    # Check if directory exists and properly extracted
+    if ! check_oracle_extraction; then
+        all_ok=false
+    fi
+    
+    # Check if ldconfig is configured
+    if [ ! -f /etc/ld.so.conf.d/oracle-instantclient.conf ]; then
+        all_ok=false
+    fi
+    
+    # Check if libraries are accessible
+    if ! ldconfig -p | grep -q instantclient_23_26; then
+        all_ok=false
+    fi
+    
+    if [ "$all_ok" = true ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Verify Oracle Instant Client setup at the beginning
+echo "Verifying Oracle Instant Client setup..."
+if check_oracle_setup; then
+    ORACLE_ALREADY_SETUP=true
+    echo "✓ Oracle Instant Client 23.26 is already set up"
+    echo "  - Directory: /opt/oracle/instantclient_23_26"
+    echo "  - SDK headers: present"
+    echo "  - ldconfig: configured"
+    echo "  - Libraries: accessible"
+    echo ""
+    echo "Steps 3-6 will be skipped."
+else
+    ORACLE_ALREADY_SETUP=false
+    echo "✗ Oracle Instant Client not found or incomplete setup"
+    echo "  Steps 3-6 will be executed to set up Oracle Instant Client."
+fi
+echo ""
+
 # Detect installed PHP versions
 echo "Detecting installed PHP versions..."
 AVAILABLE_VERSIONS=()
@@ -85,12 +154,12 @@ fi
 echo ""
 
 # Step 1: Install dependencies
-echo "[1/7] Installing dependencies..."
+echo "[1/8] Installing dependencies..."
 apt update
-apt install -y libaio1t64 unzip php${PHP_VERSION}-dev wget
+apt install -y libaio1t64 unzip php${PHP_VERSION}-dev wget build-essential
 
 # Step 2: Create symlink for libaio
-echo "[2/7] Creating symlink for libaio..."
+echo "[2/8] Creating symlink for libaio..."
 if [ ! -f /usr/lib/x86_64-linux-gnu/libaio.so.1 ]; then
     ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1
     echo "Symlink created successfully"
@@ -98,51 +167,116 @@ else
     echo "Symlink already exists, skipping..."
 fi
 
-# Step 3: Create Oracle directory
-echo "[3/7] Creating Oracle directory..."
-mkdir -p /opt/oracle
-cd /opt/oracle
+# Steps 3-6: Oracle Instant Client setup (skip if already set up)
+if [ "$ORACLE_ALREADY_SETUP" = false ]; then
+    # Step 3: Create Oracle directory
+    echo "[3/8] Creating Oracle directory..."
+    mkdir -p /opt/oracle
+    cd /opt/oracle
 
-# Step 4: Download Oracle Instant Client files
-echo "[4/7] Downloading Oracle Instant Client files..."
-if [ ! -f instantclient-basic-linux.x64-23.26.0.0.0.zip ]; then
-    wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip
+    # Step 4: Download Oracle Instant Client files
+    echo "[4/8] Downloading Oracle Instant Client files..."
+    if [ ! -f instantclient-basic-linux.x64-23.26.0.0.0.zip ]; then
+        wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip
+    else
+        echo "Basic package already downloaded, skipping..."
+    fi
+
+    if [ ! -f instantclient-sdk-linux.x64-23.26.0.0.0.zip ]; then
+        wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-sdk-linux.x64-23.26.0.0.0.zip
+    else
+        echo "SDK package already downloaded, skipping..."
+    fi
+
+    # Step 5: Extract files
+    echo "[5/8] Extracting Oracle Instant Client files..."
+    
+    # Remove incomplete extraction if exists
+    if [ -d /opt/oracle/instantclient_23_26 ]; then
+        if ! check_oracle_extraction; then
+            echo "Removing incomplete extraction..."
+            rm -rf /opt/oracle/instantclient_23_26
+        fi
+    fi
+    
+    # Extract if directory doesn't exist or was incomplete
+    if [ ! -d /opt/oracle/instantclient_23_26 ]; then
+        echo "Extracting basic package..."
+        unzip -o -q instantclient-basic-linux.x64-23.26.0.0.0.zip
+        
+        echo "Extracting SDK package..."
+        unzip -o -q instantclient-sdk-linux.x64-23.26.0.0.0.zip
+        
+        # Verify extraction
+        if check_oracle_extraction; then
+            echo "Files extracted successfully"
+        else
+            echo "Error: Extraction incomplete or corrupted"
+            echo "Please check the zip files and try again"
+            exit 1
+        fi
+    else
+        echo "Instant Client already extracted and verified, skipping..."
+    fi
+
+    # Step 6: Configure ldconfig
+    echo "[6/8] Configuring ldconfig..."
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf
+    ldconfig
+    echo "ldconfig configured successfully"
 else
-    echo "Basic package already downloaded, skipping..."
+    echo "[3/8] Skipping Oracle directory creation (already exists)"
+    echo "[4/8] Skipping Oracle Instant Client download (already downloaded)"
+    echo "[5/8] Skipping Oracle Instant Client extraction (already extracted)"
+    echo "[6/8] Skipping ldconfig configuration (already configured)"
 fi
 
-if [ ! -f instantclient-sdk-linux.x64-23.26.0.0.0.zip ]; then
-    wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-sdk-linux.x64-23.26.0.0.0.zip
+# Step 7: Download OCI8 tarball from PECL
+echo "[7/8] Downloading OCI8 tarball from PECL..."
+cd /tmp
+OCI8_VERSION="3.4.0"
+if [ ! -f oci8-${OCI8_VERSION}.tgz ]; then
+    wget https://pecl.php.net/get/oci8-${OCI8_VERSION}.tgz
 else
-    echo "SDK package already downloaded, skipping..."
+    echo "OCI8 tarball already downloaded, skipping..."
 fi
 
-# Step 5: Extract files
-echo "[5/7] Extracting Oracle Instant Client files..."
-if [ ! -d /opt/oracle/instantclient_23_26 ]; then
-    unzip -q instantclient-basic-linux.x64-23.26.0.0.0.zip
-    unzip -q instantclient-sdk-linux.x64-23.26.0.0.0.zip
-    echo "Files extracted successfully"
-else
-    echo "Instant Client already extracted, skipping..."
+# Extract tarball
+if [ -d oci8-${OCI8_VERSION} ]; then
+    rm -rf oci8-${OCI8_VERSION}
 fi
+tar -xzf oci8-${OCI8_VERSION}.tgz
+cd oci8-${OCI8_VERSION}
 
-# Step 6: Configure ldconfig
-echo "[6/7] Configuring ldconfig..."
-echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf
-ldconfig
-
-# Step 7: Install OCI8 via PECL
-echo "[7/7] Installing OCI8 extension for PHP ${PHP_VERSION}..."
+# Step 8: Compile and install OCI8 for selected PHP version
+echo "[8/8] Compiling and installing OCI8 extension for PHP ${PHP_VERSION}..."
 
 # Check if OCI8 is already installed for this PHP version
 if php${PHP_VERSION} -m 2>/dev/null | grep -q oci8; then
     echo "OCI8 already installed for PHP ${PHP_VERSION}, skipping..."
 else
-    # Install OCI8
-    echo instantclient,/opt/oracle/instantclient_23_26 | pecl install oci8
+    # Clean previous builds
+    make clean 2>/dev/null || true
+    
+    # Run phpize
+    echo "Running phpize for PHP ${PHP_VERSION}..."
+    /usr/bin/phpize${PHP_VERSION} --clean 2>/dev/null || true
+    /usr/bin/phpize${PHP_VERSION}
+    
+    # Configure with Oracle Instant Client
+    echo "Configuring OCI8..."
+    ./configure --with-oci8=shared,instantclient,/opt/oracle/instantclient_23_26 --with-php-config=/usr/bin/php-config${PHP_VERSION}
+    
+    # Compile
+    echo "Compiling OCI8..."
+    make
+    
+    # Install
+    echo "Installing OCI8..."
+    make install
     
     # Enable OCI8 extension
+    echo "Enabling OCI8 extension..."
     echo "extension=oci8.so" > /etc/php/${PHP_VERSION}/mods-available/oci8.ini
     phpenmod -v ${PHP_VERSION} oci8
     
@@ -156,6 +290,12 @@ else
     
     echo "OCI8 installed and enabled successfully for PHP ${PHP_VERSION}"
 fi
+
+# Cleanup
+echo ""
+echo "Cleaning up temporary files..."
+cd /tmp
+rm -rf oci8-${OCI8_VERSION}
 
 echo ""
 echo "=========================================="
