@@ -263,17 +263,18 @@ fi
 echo "[7/8] Downloading OCI8 tarball from PECL..."
 cd /tmp
 
-if [ ! -f oci8.tgz ]; then
-    wget -O oci8.tgz "https://pecl.php.net/get/oci8"
+OCI8_VERSION="3.4.1"
+if [ ! -f oci8-${OCI8_VERSION}.tgz ]; then
+    wget https://pecl.php.net/get/oci8-${OCI8_VERSION}.tgz
 else
     echo "Extension file already downloaded, skipping..."
 fi
 
 # Extract tarball
-if [ -d oci8.tgz ]; then
-    rm -rf oci8.tgz
+if [ -d oci8-${OCI8_VERSION} ]; then
+    rm -rf oci8-${OCI8_VERSION}
 fi
-tar -xzf oci8.tgz
+tar -xzf oci8-${OCI8_VERSION}.tgz
 cd oci8
 
 # Step 8: Compile and install OCI8 for selected PHP version
