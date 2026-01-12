@@ -11,7 +11,7 @@ This installer script is based on the tutorial from: https://gist.github.com/sya
 Run the installer script with sudo:
 
 ```bash
-sudo ./install.sh
+wget -O oci-installer-ubuntu.sh "https://raw.githubusercontent.com/syahzul/oci-installer-ubuntu/refs/heads/main/install.sh"; bash oci-installer-ubuntu.sh
 ```
 
 The script will:
@@ -24,7 +24,7 @@ The script will:
 ## Requirements
 
 - Ubuntu 24.04
-- PHP 8.2, 8.3, 8.4, or 8.5 installed
+- PHP 8.2, 8.3 or 8.4 installed
 - Root or sudo access
 - Internet connection (for downloading Oracle Instant Client)
 
